@@ -31,6 +31,12 @@ var lives = 3;
 
 var bricks = [];
 
+// Movement speeds are tuned for 60 FPS; scale by elapsed time so the game
+// runs at the same speed on 120/144 Hz displays.
+var TARGET_FRAME_MS = 1000/60;
+var MAX_FRAME_SCALE = 3; // avoid huge jumps after a tab switch or alert()
+var lastFrameTime = null;
+
 for(c=0; c<brickColumnCount; c++) {
   bricks[c] = [];
   for(r=0; r<brickRowCount; r++) {
@@ -84,7 +90,13 @@ function drawBricks() {
   }
 }
 
-function draw() {
+function draw(timestamp) {
+  var frameScale = 1;
+  if(lastFrameTime !== null) {
+    frameScale = Math.min((timestamp - lastFrameTime) / TARGET_FRAME_MS, MAX_FRAME_SCALE);
+  }
+  lastFrameTime = timestamp;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBricks();
   drawBall();
@@ -126,21 +138,14 @@ function draw() {
    dx = -dx; 
   }
   
-  x += dx * ballSpeed;
-  y += dy * ballSpeed;
+  x += dx * ballSpeed * frameScale;
+  y += dy * ballSpeed * frameScale;
   
-  if(rightPressed && paddleX < canvas.width-paddleWidth) {
-    if(level >= 3) {
-      paddleX += 5;
-    } else {
-    paddleX += 3;
-    }
-  } else if(leftPressed && paddleX > 0) {
-    if(level >= 3) {
-      paddleX -= 5;
-    } else {
-      paddleX -= 3;
-    }
+  var paddleSpeed = (level >= 3 ? 5 : 3) * frameScale;
+  if(rightPressed) {
+    paddleX = Math.min(paddleX + paddleSpeed, canvas.width-paddleWidth);
+  } else if(leftPressed) {
+    paddleX = Math.max(paddleX - paddleSpeed, 0);
   }
   
   if(level >= 2) {
@@ -232,7 +237,7 @@ function drawLevel() {
 
 var r = confirm("Would you like to play?");
 if (r == true) {
-  draw();
+  requestAnimationFrame(draw);
 } else {
   close;
 }
